@@ -1,12 +1,15 @@
-import express from 'express'
-import path from 'path'
-import * as  http from 'http'
-import socketio from 'socket.io'
 require('dotenv').config()
+const express = require('express')
+const path = require('path')
+const http = require('http')
+const socketio = require('socket.io')
 const app = express()
 const server = http.createServer(app)
-const io = http.createServer(app)
+const io = socketio(server)
 const port = process.env.PORT || 3000
+
+// static folder
+app.use(express.static(path.join(__dirname, '../public')))
 
 // run when client joins
 
@@ -14,10 +17,7 @@ io.on('connection', socket => {
     console.log("new connection")
 })
 
-// static folder
-app.use(express.static(path.join(__dirname, '../public')))
-console.log(path.join(__dirname, '../public'))
-console.log("helloo")
+
 server.listen(port, () => {
     console.log(`Listening at ${port}`)
 })
