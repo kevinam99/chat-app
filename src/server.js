@@ -8,6 +8,7 @@ const server = http.createServer(app)
 const io = socketio(server)
 const port = process.env.PORT || 3000
 const formatMessage = require('../utils/messages')
+const {userJoin, getCurrentUser} = require('../utils/users')
 const botName = 'Aditi'
 // static folder
 app.use(express.static(path.join(__dirname, '../public')))
@@ -15,19 +16,30 @@ app.use(express.static(path.join(__dirname, '../public')))
 // run when client joins
 
 io.on('connection', socket => {
-    console.log("new connection")
-    socket.emit('message', formatMessage(botName, 'Welcome to the chat app')) // emits only to the client that connets
-
-    // Broadcast when a user connects
-
-    socket.broadcast.emit('message', formatMessage(botName, 'A user has joined the chat')); // everyone except me
-    socket.on('disconnect', () => {
-        io.emit('message', formatMessage(botName, 'User has left the chat')) // inform everyone
-    })
+    console.log("new connection received")
 
     // Listen for chat message
     socket.on('chatMessage', msg => {
-        io.emit('message', formatMessage('USER', msg)) // sending message back to client
+        const user = getCurrentUser(socket.id)
+        io.to(user.room).emit('message', formatMessage(user.username, msg)) // sending message back to client
+    })
+
+    socket.on('joinRoom', ({username, room}) => {
+        console.log(`${username} joined ${room}`)
+        const user = userJoin(socket.id, username, room)
+        socket.join(user.room)
+        
+        // Welcome user
+        socket.emit('message', formatMessage(botName, 'Welcome to the chat app')) // emits only to the client that connets
+
+        // Broadcast when a user connects. Broadcast to everyone except current client
+        socket.broadcast.to(user.room).emit('message', formatMessage(botName, `${user.username} has joined the chat`)); // everyone except me
+    
+    })
+
+    socket.on('disconnect', () => {
+        const user = getCurrentUser(socket.id)
+        io.emit('message', formatMessage(botName, `${user} has left the chat`)) // inform everyone
     })
 })
 
