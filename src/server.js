@@ -8,7 +8,7 @@ const server = http.createServer(app)
 const io = socketio(server)
 const port = process.env.PORT || 3000
 const formatMessage = require('../utils/messages')
-const {userJoin, getCurrentUser} = require('../utils/users')
+const {userJoin, getCurrentUser, getRoomUsers} = require('../utils/users')
 const botName = 'Aditi'
 // static folder
 app.use(express.static(path.join(__dirname, '../public')))
@@ -34,12 +34,25 @@ io.on('connection', socket => {
 
         // Broadcast when a user connects. Broadcast to everyone except current client
         socket.broadcast.to(user.room).emit('message', formatMessage(botName, `${user.username} has joined the chat`)); // everyone except me
-    
+        
+        // send users and room info
+
+        io.to(user.room).emit('roomUsers', {
+            room: user.room,
+            users: getRoomUsers(user.room)
+        })
     })
 
     socket.on('disconnect', () => {
         const user = getCurrentUser(socket.id)
-        io.emit('message', formatMessage(botName, `${user} has left the chat`)) // inform everyone
+        io.to(user.room).emit('message', formatMessage(botName, `${user.username} has left the chat`)) // inform everyone
+        
+        // send users and room info
+
+        io.to(user.room).emit('roomUsers', {
+            room: user.room,
+            users: getRoomUsers(user.room)
+        })
     })
 })
 
